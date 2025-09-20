@@ -6,3 +6,7 @@ docker build -t chat_streamlit .
 docker run -p 8501:8501 --name chat_streamlit-app chat_streamlit
 
 ```
+
+```bash
+sudo docker network connect ollama-network chat_streamlit-app
+```
