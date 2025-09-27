@@ -16,7 +16,7 @@ def converter_imagem_para_base64(uploaded_file):
 
 # Configurações iniciais
 url_api = "http://ollama:11434/api/chat"
-modelo = "gemma3:4b"
+modelo = "granite3.2-vision"
 
 st.set_page_config(page_title="LLM local", page_icon="🤖")
 st.title("💬 LLM Local com API Ollama")
@@ -91,3 +91,4 @@ if st.session_state["mensagens"]:
 
         with st.chat_message("assistant"):
             st.markdown(f"**Assistente:**\n{msg['resposta']}", unsafe_allow_html=True)
+
