@@ -23,7 +23,7 @@ def processar_imagem_upload(uploaded_file):
 # -----------------------
 ollama_host = "ollama"  # nome do container Ollama
 url_api = f"http://ollama:11434/api/chat"
-url_models = f"http://ollama:11434/api/models"
+url_models = f"http://ollama:11434/api/tags"
 
 st.set_page_config(page_title="LLM Local", page_icon="🤖")
 st.title("💬 LLM Local com API Ollama")
@@ -147,3 +147,4 @@ if prompt:
             "role": "assistant",
             "content": error_message
         })
+
