@@ -20,3 +20,9 @@ git reset --hard origin/main
 ./update.sh
 ```
 
+```bash
+chmod +x update.sh
+
+```
+
+
