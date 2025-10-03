@@ -4,7 +4,9 @@ import requests
 import json
 from io import BytesIO
 
+# -----------------------
 # Função para processar a imagem
+# -----------------------
 def processar_imagem_upload(uploaded_file):
     if uploaded_file is None:
         return None, None
@@ -17,14 +19,20 @@ def processar_imagem_upload(uploaded_file):
         st.error(f"Erro ao processar a imagem: {e}")
         return None, None
 
+# -----------------------
 # Configurações iniciais
-url_api = "http://localhost:11434/chat"
-url_models = "http://localhost:11434/api/tags"  # Retorna JSON com "models"
+# -----------------------
+# Use o nome do container do Ollama como host
+ollama_host = "ollama"  # Substitua pelo nome correto do seu container Ollama
+url_api = f"http://ollama:11434/chat"
+url_models = f"http://ollama:11434/api/tags"
 
 st.set_page_config(page_title="LLM local", page_icon="🤖")
 st.title("💬 LLM Local com API Ollama")
 
+# -----------------------
 # Obter lista de modelos disponíveis
+# -----------------------
 try:
     resposta_modelos = requests.get(url_models, timeout=10)
     if resposta_modelos.status_code == 200:
@@ -41,14 +49,16 @@ except requests.exceptions.RequestException as e:
 if not modelos_disponiveis:
     modelos_disponiveis = ["granite4:micro-h"]
 
-# Seleção do modelo
+# Dropdown para selecionar o modelo
 modelo_selecionado = st.selectbox("Selecione o modelo", modelos_disponiveis)
 
-# Sessão de estado para armazenar histórico
+# -----------------------
+# Histórico de mensagens
+# -----------------------
 if "mensagens" not in st.session_state:
     st.session_state["mensagens"] = []
 
-# Exibir histórico de mensagens
+# Exibir histórico
 for msg in st.session_state["mensagens"]:
     role = msg["role"]
     with st.chat_message(role):
@@ -56,14 +66,18 @@ for msg in st.session_state["mensagens"]:
         if msg.get("imagem"):
             st.image(msg["imagem"], width=300)
 
+# -----------------------
 # Upload da imagem (opcional)
+# -----------------------
 imagem_uploaded_file = st.file_uploader("Envie uma imagem (opcional)", type=["png", "jpg", "jpeg"])
 
+# -----------------------
 # Campo de prompt
+# -----------------------
 prompt = st.chat_input("Digite sua pergunta:")
 
 if prompt:
-    # Processar imagem (se houver)
+    # Processar imagem
     imagem_bytes_para_historico, imagem_base64_para_api = processar_imagem_upload(imagem_uploaded_file)
 
     # Adiciona a mensagem do usuário ao histórico
@@ -95,6 +109,9 @@ if prompt:
             "messages": api_messages
         }
 
+        # -----------------------
+        # Chamada à API do Ollama
+        # -----------------------
         try:
             resposta = requests.post(url_api, json=dados, stream=True, timeout=240)
 
