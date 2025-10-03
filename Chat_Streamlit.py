@@ -48,15 +48,18 @@ if prompt:
         st.markdown(prompt)
 
     with st.spinner("Processando..."):
-        # Prepara os dados para a API
+        # Prepara os dados para a API, incluindo o histórico
+        api_messages = []
+        for msg in st.session_state.mensagens:
+            api_msg = {"role": msg["role"], "content": msg["content"]}
+            # Adiciona imagem se existir (já em base64)
+            if "imagem_base64" in msg and msg["imagem_base64"]:
+                api_msg["images"] = [msg["imagem_base64"]]
+            api_messages.append(api_msg)
+
         dados = {
             "model": modelo,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
-            ]
+            "messages": api_messages, # Envia o histórico completo
         }
 
         # Variáveis para armazenar a imagem para a API e para o histórico
@@ -67,10 +70,12 @@ if prompt:
             # Processa a imagem: obtém os bytes e a versão base64
             imagem_bytes_para_historico, imagem_base64_para_api = processar_imagem_upload(imagem_uploaded_file)
             if imagem_base64_para_api:
-                dados["messages"][0]["images"] = [imagem_base64_para_api]
+                # Adiciona a imagem à última mensagem (a que acabamos de adicionar)
+                dados["messages"][-1]["images"] = [imagem_base64_para_api]
             # Adiciona a imagem à última mensagem do usuário no histórico
             if imagem_bytes_para_historico:
                 st.session_state.mensagens[-1]["imagem"] = imagem_bytes_para_historico
+                st.session_state.mensagens[-1]["imagem_base64"] = imagem_base64_para_api # Salva base64 para contexto futuro
                 with st.chat_message("user"): # Re-exibe a imagem sob a mensagem do usuário
                      st.image(imagem_bytes_para_historico, width=300)
 
@@ -116,11 +121,6 @@ if prompt:
                 "imagem": imagem_bytes_para_historico,
                 "resposta": f"Erro ao conectar à API: {e}"
             })
-
-# Exibir histórico
-if st.session_state["mensagens"]:
-    st.subheader("Histórico de Conversa")
-
     for msg in st.session_state["mensagens"]:
         with st.chat_message("user"):
             st.markdown(f"**Você:**\n{msg['usuario']}", unsafe_allow_html=True)
