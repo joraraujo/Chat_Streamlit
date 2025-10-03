@@ -4,7 +4,7 @@ import requests
 import json
 from io import BytesIO
 
-# Função para processar a imagem (leitura e conversão para base64)
+# Função para processar a imagem
 def processar_imagem_upload(uploaded_file):
     if uploaded_file is None:
         return None, None
@@ -18,8 +18,8 @@ def processar_imagem_upload(uploaded_file):
         return None, None
 
 # Configurações iniciais
-url_api = "http://ollama:11434/chat"
-url_models = "http://ollama:11434/models"
+url_api = "http://localhost:11434/chat"
+url_models = "http://localhost:11434/api/tags"  # Retorna JSON com "models"
 
 st.set_page_config(page_title="LLM local", page_icon="🤖")
 st.title("💬 LLM Local com API Ollama")
@@ -28,7 +28,8 @@ st.title("💬 LLM Local com API Ollama")
 try:
     resposta_modelos = requests.get(url_models, timeout=10)
     if resposta_modelos.status_code == 200:
-        modelos_disponiveis = [m['name'] for m in resposta_modelos.json()]
+        json_modelos = resposta_modelos.json()
+        modelos_disponiveis = [m["name"] for m in json_modelos.get("models", [])]
     else:
         st.error(f"Erro ao obter modelos: {resposta_modelos.status_code}")
         modelos_disponiveis = []
@@ -38,7 +39,7 @@ except requests.exceptions.RequestException as e:
 
 # Se não encontrou nenhum modelo, definir um padrão
 if not modelos_disponiveis:
-    modelos_disponiveis = ["granite4:micro-h"]  # ajuste conforme o seu modelo local
+    modelos_disponiveis = ["granite4:micro-h"]
 
 # Seleção do modelo
 modelo_selecionado = st.selectbox("Selecione o modelo", modelos_disponiveis)
