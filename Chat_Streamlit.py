@@ -2,7 +2,6 @@ import streamlit as st
 import base64
 import requests
 import json
-from io import BytesIO
 
 # -----------------------
 # Função para processar a imagem
@@ -22,16 +21,15 @@ def processar_imagem_upload(uploaded_file):
 # -----------------------
 # Configurações iniciais
 # -----------------------
-# Use o nome do container do Ollama como host
-ollama_host = "ollama"  # Substitua pelo nome correto do seu container Ollama
+ollama_host = "ollama"  # nome do container Ollama
 url_api = f"http://ollama:11434/api/chat"
-url_models = f"http://ollama:11434/api/tags"
+url_models = f"http://ollama:11434/api/models"
 
-st.set_page_config(page_title="LLM local", page_icon="🤖")
+st.set_page_config(page_title="LLM Local", page_icon="🤖")
 st.title("💬 LLM Local com API Ollama")
 
 # -----------------------
-# Obter lista de modelos disponíveis
+# Listar modelos disponíveis
 # -----------------------
 try:
     resposta_modelos = requests.get(url_models, timeout=10)
@@ -45,11 +43,9 @@ except requests.exceptions.RequestException as e:
     st.error(f"Erro ao conectar à API de modelos: {e}")
     modelos_disponiveis = []
 
-# Se não encontrou nenhum modelo, definir um padrão
 if not modelos_disponiveis:
     modelos_disponiveis = ["granite4:micro-h"]
 
-# Dropdown para selecionar o modelo
 modelo_selecionado = st.selectbox("Selecione o modelo", modelos_disponiveis)
 
 # -----------------------
@@ -60,14 +56,13 @@ if "mensagens" not in st.session_state:
 
 # Exibir histórico
 for msg in st.session_state["mensagens"]:
-    role = msg["role"]
-    with st.chat_message(role):
+    with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
         if msg.get("imagem"):
             st.image(msg["imagem"], width=300)
 
 # -----------------------
-# Upload da imagem (opcional)
+# Upload de imagem opcional
 # -----------------------
 imagem_uploaded_file = st.file_uploader("Envie uma imagem (opcional)", type=["png", "jpg", "jpeg"])
 
@@ -78,78 +73,77 @@ prompt = st.chat_input("Digite sua pergunta:")
 
 if prompt:
     # Processar imagem
-    imagem_bytes_para_historico, imagem_base64_para_api = processar_imagem_upload(imagem_uploaded_file)
+    imagem_bytes, imagem_base64 = processar_imagem_upload(imagem_uploaded_file)
 
-    # Adiciona a mensagem do usuário ao histórico
+    # Adicionar mensagem do usuário ao histórico
     msg_usuario = {
         "role": "user",
         "content": prompt,
-        "imagem": imagem_bytes_para_historico,
-        "imagem_base64": imagem_base64_para_api
+        "imagem": imagem_bytes,
+        "imagem_base64": imagem_base64
     }
     st.session_state["mensagens"].append(msg_usuario)
 
-    # Exibe mensagem do usuário
+    # Exibir mensagem do usuário
     with st.chat_message("user"):
         st.markdown(prompt)
-        if imagem_bytes_para_historico:
-            st.image(imagem_bytes_para_historico, width=300)
+        if imagem_bytes:
+            st.image(imagem_bytes, width=300)
 
-    with st.spinner("Processando..."):
-        # Prepara dados para a API
-        api_messages = []
-        for msg in st.session_state["mensagens"]:
-            api_msg = {"role": msg["role"], "content": msg["content"]}
-            if msg.get("imagem_base64"):
-                api_msg["images"] = [msg["imagem_base64"]]
-            api_messages.append(api_msg)
+    # -----------------------
+    # Preparar dados para API
+    # -----------------------
+    api_messages = []
+    for msg in st.session_state["mensagens"]:
+        api_msg = {"role": msg["role"], "content": msg["content"]}
+        if msg.get("imagem_base64"):
+            api_msg["images"] = [msg["imagem_base64"]]
+        api_messages.append(api_msg)
 
-        dados = {
-            "model": modelo_selecionado,
-            "messages": api_messages
-        }
+    dados = {
+        "model": modelo_selecionado,
+        "messages": api_messages
+    }
 
-        # -----------------------
-        # Chamada à API do Ollama
-        # -----------------------
-        try:
-            resposta = requests.post(url_api, json=dados, stream=True, timeout=240)
+    # -----------------------
+    # Chamada à API Ollama com streaming
+    # -----------------------
+    try:
+        resposta = requests.post(url_api, json=dados, stream=True, timeout=300)
 
-            if resposta.status_code == 200:
-                # Exibir resposta do assistente em streaming
-                full_response = ""
-                with st.chat_message("assistant"):
-                    for linha in resposta.iter_lines():
-                        if linha:
-                            try:
-                                parte = json.loads(linha.decode('utf-8'))
-                                texto = parte.get("message", {}).get("content")
-                                if texto:
-                                    st.write(texto)
-                                    full_response += texto
-                            except json.JSONDecodeError:
-                                st.write("[Erro ao decodificar parte da resposta]")
-                                full_response += "[Erro ao decodificar parte da resposta]"
+        if resposta.status_code == 200:
+            with st.chat_message("assistant"):
+                resposta_container = st.empty()
+                texto_completo = ""
 
-                # Adiciona a resposta completa ao histórico
-                st.session_state["mensagens"].append({
-                    "role": "assistant",
-                    "content": full_response
-                })
+                for linha in resposta.iter_lines():
+                    if linha:
+                        try:
+                            parte = json.loads(linha.decode("utf-8"))
+                            texto_parte = parte.get("message", {}).get("content", "")
+                            if texto_parte:
+                                texto_completo += texto_parte
+                                resposta_container.markdown(texto_completo)
+                        except json.JSONDecodeError:
+                            pass  # ignora chunks inválidos
 
-            else:
-                error_message = f"Erro na requisição: {resposta.status_code}\n{resposta.text}"
-                st.error(error_message)
-                st.session_state["mensagens"].append({
-                    "role": "assistant",
-                    "content": error_message
-                })
-
-        except requests.exceptions.RequestException as e:
-            error_message = f"Erro ao conectar à API: {e}"
+            # Adiciona resposta completa ao histórico
+            st.session_state["mensagens"].append({
+                "role": "assistant",
+                "content": texto_completo
+            })
+        else:
+            error_message = f"Erro na requisição: {resposta.status_code}\n{resposta.text}"
             st.error(error_message)
             st.session_state["mensagens"].append({
                 "role": "assistant",
                 "content": error_message
             })
 
+    except requests.exceptions.RequestException as e:
+        error_message = f"Erro ao conectar à API: {e}"
+        st.error(error_message)
+        st.session_state["mensagens"].append({
+            "role": "assistant",
+            "content": error_message
+        })
