@@ -18,8 +18,8 @@ def processar_imagem_upload(uploaded_file):
         return None, None
 
 # Configurações iniciais
-url_api = "http://ollama:11434/api/chat"
-url_models = "http://ollama:11434/api/models"
+url_api = "http://ollama:11434/chat"
+url_models = "http://ollama:11434/models"
 
 st.set_page_config(page_title="LLM local", page_icon="🤖")
 st.title("💬 LLM Local com API Ollama")
@@ -35,6 +35,10 @@ try:
 except requests.exceptions.RequestException as e:
     st.error(f"Erro ao conectar à API de modelos: {e}")
     modelos_disponiveis = []
+
+# Se não encontrou nenhum modelo, definir um padrão
+if not modelos_disponiveis:
+    modelos_disponiveis = ["granite4:micro-h"]  # ajuste conforme o seu modelo local
 
 # Seleção do modelo
 modelo_selecionado = st.selectbox("Selecione o modelo", modelos_disponiveis)
