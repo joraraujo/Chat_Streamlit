@@ -16,3 +16,7 @@ git fetch origin
 git reset --hard origin/main
 ```
 
+```bash
+./update.sh
+```
+
